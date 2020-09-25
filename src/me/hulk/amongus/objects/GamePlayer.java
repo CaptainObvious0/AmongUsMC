@@ -1,13 +1,11 @@
 package me.hulk.amongus.objects;
 
 import me.hulk.amongus.AmongUs;
-import me.hulk.amongus.GameStatus;
+import me.hulk.amongus.enums.GameStatus;
 import me.hulk.amongus.GameTasks.Task;
-import me.hulk.amongus.PlayerRole;
-import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
-import org.bukkit.GameMode;
-import org.bukkit.Material;
+import me.hulk.amongus.enums.PlayerColors;
+import me.hulk.amongus.enums.PlayerRole;
+import org.bukkit.*;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
@@ -17,6 +15,7 @@ public class GamePlayer {
     private Task[] tasks;
     private Game game;
     private PlayerRole role;
+    private PlayerColors color;
     private boolean alive;
 
     public GamePlayer(Player player, Game game, PlayerRole role) {
@@ -24,7 +23,7 @@ public class GamePlayer {
         this.alive = game.getStatus() == GameStatus.WAITING ? true : false;
         this.game = game;
         this.role = role;
-
+        color = game.getColor();
     }
 
     public void generateTasks() {
@@ -44,6 +43,7 @@ public class GamePlayer {
         role = PlayerRole.DEAD;
         player.setGameMode(GameMode.SPECTATOR);
         game.decreaseAlivePlayers();
+        game.addDeadPlayer(this, player.getLocation());
         // create dead body at players location
     }
 
@@ -74,6 +74,10 @@ public class GamePlayer {
     public double getPlayerVision() {
         if (role == PlayerRole.CREWMATE) return game.getSettings().getCrewVision();
         return game.getSettings().getImposterVision();
+    }
+
+    public PlayerColors getColor() {
+        return color;
     }
 
 }

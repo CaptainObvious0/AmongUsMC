@@ -1,11 +1,14 @@
 package me.hulk.amongus;
 
+import me.hulk.amongus.enums.GameStatus;
+import me.hulk.amongus.enums.PlayerRole;
 import me.hulk.amongus.events.GameEndEvent;
 import me.hulk.amongus.events.GameReportBodyEvent;
 import me.hulk.amongus.events.GameStartEvent;
 import me.hulk.amongus.objects.Game;
 import me.hulk.amongus.objects.GamePlayer;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -74,12 +77,47 @@ public class GameListeners implements Listener {
     public void onChat(AsyncPlayerChatEvent event) {
 
         Game game = AmongUs.getGame();
-        GamePlayer gamePlayer = game.getGamePlayer(event.getPlayer());
+        Player player = event.getPlayer();
+        GamePlayer gamePlayer = game.getGamePlayer(player);
 
-        if (game.getStatus() == GameStatus.PLAYING && gamePlayer != null && (gamePlayer.getRole() == PlayerRole.CREWMATE || gamePlayer.getRole() == PlayerRole.IMPOSTER)) {
-            event.setCancelled(true);
-            return;
+        if (game.getStatus() == GameStatus.PLAYING && gamePlayer != null) {
+            // Prevent players from chatting while in game
+            if (gamePlayer.getRole() == PlayerRole.CREWMATE || gamePlayer.getRole() == PlayerRole.IMPOSTER) {
+                event.setCancelled(true);
+                player.sendMessage(color("&cYou may not chat while not in the discusiion phase"));
+                return;
+            }
+
+            // Don't send messages from spectators to active players
+            if (gamePlayer.getRole() == PlayerRole.DEAD || gamePlayer.getRole() == PlayerRole.SPECTATOR) {
+                for (Player players : event.getRecipients()) {
+                    GamePlayer gamePlayer1 = game.getGamePlayer(players);
+                    if (gamePlayer1 != null && (gamePlayer1.getRole() == PlayerRole.CREWMATE || gamePlayer1.getRole() == PlayerRole.IMPOSTER)) {
+                        event.getRecipients().remove(players);
+                    }
+                }
+            }
+
         }
+
+    }
+
+    @EventHandler
+    public void playerInteract(PlayerInteractEvent event) {
+        Game game = AmongUs.getGame();
+        GamePlayer player = game.getGamePlayer(event.getPlayer());
+
+        if (player != null && event.getItem().getType() == Material.BLAZE_ROD) {
+
+            GamePlayer deadPlayer = game.checkForNearDead(event.getPlayer().getLocation());
+
+            if (deadPlayer != null) {
+                game.onDeadBodyReport(player, deadPlayer);
+            } else {
+
+            }
+        }
+
     }
 
     @EventHandler
@@ -107,9 +145,8 @@ public class GameListeners implements Listener {
         event.getGame().gameEndEvent();
     }
 
-    @EventHandler
-    public void onReportBody(GameReportBodyEvent event) {
-        event.getGame().onReportBody(event.getReporter(), event.getDeadPlayer());
+    private String color(String msg) {
+        return ChatColor.translateAlternateColorCodes('&', "&9AmongUs> " + msg);
     }
 
 }

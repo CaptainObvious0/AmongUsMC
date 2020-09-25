@@ -1,4 +1,4 @@
-package me.hulk.amongus;
+package me.hulk.amongus.enums;
 
 public enum GameStatus {
 
