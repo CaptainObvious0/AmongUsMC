@@ -1,0 +1,24 @@
+package me.hulk.amongus.events;
+
+import me.hulk.amongus.objects.Game;
+import org.bukkit.event.Event;
+import org.bukkit.event.HandlerList;
+
+public class GameEndEvent extends Event {
+
+    Game game;
+
+    public GameEndEvent(Game game) {
+        this.game = game;
+    }
+
+    public Game getGame() {
+        return game;
+    }
+
+    @Override
+    public HandlerList getHandlers() {
+        return null;
+    }
+
+}
