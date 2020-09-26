@@ -1,16 +1,20 @@
 package me.hulk.amongus.objects;
 
 import me.hulk.amongus.AmongUs;
-import me.hulk.amongus.GameTasks.GameTimer;
+import me.hulk.amongus.gui.GameGUI;
+import me.hulk.amongus.tasks.GameTimer;
 import me.hulk.amongus.enums.GameStatus;
 import me.hulk.amongus.enums.PlayerColors;
 import me.hulk.amongus.enums.PlayerRole;
 import me.hulk.amongus.events.GameEndEvent;
+import me.hulk.amongus.gui.GUIItem;
 import me.hulk.amongus.tasks.GameTask;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
@@ -19,20 +23,20 @@ import java.util.*;
 public class Game {
 
     private HashMap<Player, GamePlayer> playersInGame;
-    private List<PlayerColors> colors;
-    private HashMap<GamePlayer, Location> deadPlayers = new HashMap<>();
+    private final List<PlayerColors> colors;
+    private final HashMap<GamePlayer, Location> deadPlayers = new HashMap<>();
     private int hideTask;
-    private GameSettings settings;
-    private ArrayList<Player> playersInLobby;
+    private final GameSettings settings;
+    private final ArrayList<Player> playersInLobby;
     private GameStatus status;
-    private GameMap map;
+    private final GameMap map;
     private int alivePlayers;
     private int impostersAlive;
     private GameVote gameVote;
 
     // Voting
-    private HashMap<GamePlayer, PlayerColors> playerVotes = new HashMap<>();
     int gameTimer;
+    GameGUI votingGUI;
 
     public int discussionTimer;
     public int votingTimer;
@@ -85,8 +89,16 @@ public class Game {
 
     }
 
-    public void onReportBody(Player reporter, Player deadPlayer) {
-        status = GameStatus.DISCUSSION;
+    public void resetGame() {
+        this.deadPlayers.clear();
+        gameVote = null;
+        // Teleport players
+        status = GameStatus.PLAYING;
+
+        for (Player player : playersInGame.keySet()) {
+            player.getInventory().setItem(8, new ItemStack(Material.AIR));
+        }
+
     }
 
     public void addGamePlayer(GamePlayer player) {
@@ -129,12 +141,37 @@ public class Game {
         return playersInGame.getOrDefault(player, null);
     }
 
-    public void decreaseAlivePlayers() {
+    public GameGUI getVotingGUI() {
+        return votingGUI;
+    }
+
+    public GameVote getGameVote() { return this.gameVote; }
+
+    public List<GamePlayer> getAlivePlayers() {
+        List<GamePlayer> toReturn = new ArrayList<>();
+
+        for (GamePlayer player : playersInGame.values()) {
+            toReturn.add(player);
+        }
+
+        return toReturn;
+
+    }
+
+    public void decreaseAlivePlayers(GamePlayer player) {
         alivePlayers--;
+        playersInGame.remove(player);
+
+        if (player.getRole() == PlayerRole.IMPOSTER) impostersAlive--;
+
+        // TODO - add paramter to game end event to say who won
         if (alivePlayers <= impostersAlive) {
             status = GameStatus.END;
-            Bukkit.getPluginManager().callEvent(new GameEndEvent(this));
+            Bukkit.getPluginManager().callEvent(new GameEndEvent(this, "Crew wins!"));
             // Imposter win
+        } else if (impostersAlive == 0) {
+            status = GameStatus.END;
+            Bukkit.getPluginManager().callEvent(new GameEndEvent(this, settings.getImposters() > 1 ? "Imposters win!" : "Imposter wins!"));
         }
     }
 
@@ -150,10 +187,16 @@ public class Game {
 
     public void onDeadBodyReport(GamePlayer reporter, GamePlayer deadPlayer) {
         status = GameStatus.DISCUSSION;
+        votingGUI = GameGUI.createVotingGUI();
         // Teleport all players to discussion table
         Bukkit.broadcastMessage(ChatColor.translateAlternateColorCodes('&', "&9AmongUs> " + reporter.getColor().name() + " &freported " + deadPlayer.getColor().name() + " &fas dead!"));
         gameTimer = Bukkit.getScheduler().scheduleSyncRepeatingTask(AmongUs.getInstance(), new GameTimer(this), 40L, 20L);
         gameVote = new GameVote();
+
+        for (Player player : playersInGame.keySet()) {
+            player.getInventory().setItem(8, GUIItem.createItem(Material.CHEST, "&bPlayer Voting"));
+        }
+
     }
 
     public GamePlayer checkForNearDead(Location location) {
@@ -172,27 +215,14 @@ public class Game {
             status = GameStatus.VOTING;
         } else if (status == GameStatus.VOTING) {
             Bukkit.getScheduler().cancelTask(gameTimer);
-            // Tally votes
-            HashMap<PlayerColors, String> votes = new HashMap<>();
-            for (Map.Entry<GamePlayer, PlayerColors> vote : playerVotes.entrySet()) {
-                if (votes.get(vote.getValue()) == null) {
-                    votes.put(vote.getValue(), color(vote.getKey().getColor().getTitle() + vote.getKey().getPlayer().getName()));
-                } else {
-                    String oldString = votes.get(vote.getValue());
-                    votes.put(vote.getValue(), oldString + ", " + color(vote.getKey().getColor().getTitle() + vote.getKey().getPlayer().getName()));
-                }
+            GameVote gVotes = gameVote;
+            gVotes.printVotingResults();
+            if (gVotes.getPlayerVoted() != null) {
+                gVotes.getPlayerVoted().ejectPlayer();
+            } else {
+                // No one was ejected
             }
-
-            Bukkit.broadcastMessage("TOTAL VOTES:");
-            GamePlayer playerEjected;
-            int numVotes = 0;
-            for (Map.Entry<PlayerColors, String> playerVote : votes.entrySet()) {
-                Bukkit.broadcastMessage(color(playerVote.getKey().getTitle() + getPlayerByColor(playerVote.getKey()).getPlayer().getName() + " &f[" + playerVote.getValue() + " &f]"));
-                if (playerVote.getValue().split(",").length + 1 > numVotes) {
-                    playerEjected = getPlayerByColor(playerVote.getKey());
-                }
-            }
-
+            resetGame();
         }
     }
 

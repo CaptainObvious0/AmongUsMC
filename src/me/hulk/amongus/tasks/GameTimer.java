@@ -1,4 +1,4 @@
-package me.hulk.amongus.GameTasks;
+package me.hulk.amongus.tasks;
 
 import me.hulk.amongus.enums.GameStatus;
 import me.hulk.amongus.objects.Game;

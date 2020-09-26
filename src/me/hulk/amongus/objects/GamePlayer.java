@@ -1,13 +1,12 @@
 package me.hulk.amongus.objects;
 
 import me.hulk.amongus.AmongUs;
-import me.hulk.amongus.enums.GameStatus;
 import me.hulk.amongus.GameTasks.Task;
 import me.hulk.amongus.enums.PlayerColors;
 import me.hulk.amongus.enums.PlayerRole;
+import me.hulk.amongus.gui.GUIItem;
 import org.bukkit.*;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
 
 public class GamePlayer {
 
@@ -16,11 +15,8 @@ public class GamePlayer {
     private Game game;
     private PlayerRole role;
     private PlayerColors color;
-    private boolean alive;
-
     public GamePlayer(Player player, Game game, PlayerRole role) {
         this.player = player;
-        this.alive = game.getStatus() == GameStatus.WAITING ? true : false;
         this.game = game;
         this.role = role;
         color = game.getColor();
@@ -37,26 +33,35 @@ public class GamePlayer {
         Bukkit.getScheduler().runTaskLater(AmongUs.getInstance(), () -> {
             player.setWalkSpeed(game.getSettings().getWalkSpeed());
         }, 100);
+
+        player.getInventory().setItem(0, GUIItem.createItem(Material.BLAZE_ROD, "&eReport Tool"));
+        if (this.role == PlayerRole.CREWMATE) {
+            player.getInventory().setItem(2, GUIItem.createItem(Material.IRON_SWORD, "&cKill"));
+            player.getInventory().setItem(4, GUIItem.createItem(Material.STRING, "&bVent Tool"));
+        }
+
     }
 
     public void killPlayer() {
         role = PlayerRole.DEAD;
         player.setGameMode(GameMode.SPECTATOR);
-        game.decreaseAlivePlayers();
+        game.decreaseAlivePlayers(this);
         game.addDeadPlayer(this, player.getLocation());
         // create dead body at players location
     }
 
-    public void giveItems() {
-        player.getInventory().setItem(0, new ItemStack(Material.BLAZE_ROD));
-        if (role == PlayerRole.CREWMATE) {
-            player.getInventory().setItem(2, new ItemStack(Material.IRON_SWORD));
-            player.getInventory().setItem(4, new ItemStack(Material.STRING));
-        }
+    public void ejectPlayer() {
+        role = PlayerRole.DEAD;
+        player.setGameMode(GameMode.SPECTATOR);
+        game.decreaseAlivePlayers(this);
     }
 
     public void imposterVent() {
         // imposter vent
+    }
+
+    public void nextVent() {
+
     }
 
     public Player getPlayer() {
@@ -78,6 +83,10 @@ public class GamePlayer {
 
     public PlayerColors getColor() {
         return color;
+    }
+
+    public static String color(String msg) {
+        return ChatColor.translateAlternateColorCodes('&', msg);
     }
 
 }
