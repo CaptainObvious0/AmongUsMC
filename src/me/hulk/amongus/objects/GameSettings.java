@@ -9,13 +9,20 @@ public class GameSettings {
     private double imposterVision;
     private int discussionTime;
     private int votingTime;
+    private int meetingCooldown;
+    private int killCooldown;
 
-    public GameSettings(int imposters, int size, float walkSpeed, double crewVision, double imposterVision, int discussionTime, int votingTime) {
+    public GameSettings(int imposters, int size, float walkSpeed, double crewVision, double imposterVision,
+                        int discussionTime, int votingTime, int meetingCooldown, int killCooldown) {
         this.imposters = imposters;
         this.players = size;
         this.walkSpeed = walkSpeed;
         this.crewVision = crewVision;
         this.imposterVision = imposterVision;
+        this.meetingCooldown = meetingCooldown;
+        this.killCooldown = killCooldown;
+        this.discussionTime = discussionTime;
+        this.votingTime = votingTime;
     }
 
     public void setImposters(int imposters) {
@@ -52,4 +59,14 @@ public class GameSettings {
     public void setImposterVision(double imposterVision) {
         this.imposterVision = imposterVision;
     }
+
+    public int getMeetingCooldown() { return meetingCooldown; }
+
+    public void setMeetingCooldown(int cooldown) { this.meetingCooldown = meetingCooldown; }
+
+    public int getKillCooldown() { return this.killCooldown; }
+
+    public void setKillCooldown(int cooldown) { this.killCooldown = cooldown; }
+
+
 }

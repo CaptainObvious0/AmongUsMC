@@ -1,8 +1,8 @@
 package me.hulk.amongus.objects;
 
 import me.hulk.amongus.AmongUs;
+import me.hulk.amongus.gui.GUIItem;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -14,14 +14,35 @@ public class GameVote {
     private HashMap<GamePlayer, GamePlayer> playerVotes = new HashMap<>();
     private ArrayList<GamePlayer> skippedVoting = new ArrayList<>();
     int skips;
+    int players;
+    Game game;
 
-     public void addVote(GamePlayer playerVoting, GamePlayer playerVoted) {
-         if (playerVoted == null) {
+    public GameVote(int players, Game game) {
+        this.players = players;
+    }
+
+     public boolean addVote(GamePlayer playerVoting, GamePlayer playerVoted) {
+         if (playerVoted == null && !skippedVoting.contains(playerVoting)) {
              skips++;
              skippedVoting.add(playerVoting);
-             return;
+             checkVotes(playerVoting);
+             return true;
          }
-         playerVotes.put(playerVoting, playerVoted);
+         if (playerVotes.get(playerVoting) == null) {
+             playerVotes.put(playerVoting, playerVoted);
+             checkVotes(playerVoting);
+             return true;
+         }
+
+         return false;
+     }
+
+     public void checkVotes(GamePlayer playerVoting) {
+        players--;
+        Bukkit.broadcastMessage(GUIItem.color(playerVoting.getColor().getTitle() + playerVoting.getPlayer().getName() + " &ahas voted. " + players + " votes reaming."));
+        if (players == 0) {
+            game.changeStatus();
+        }
      }
 
      public GamePlayer getPlayerVoted() {
@@ -79,10 +100,6 @@ public class GameVote {
          Bukkit.broadcastMessage("Skipped = " + skippedVoting.toString());
 
 
-     }
-
-     public String color(String msg) {
-         return ChatColor.translateAlternateColorCodes('&', msg);
      }
 
 }

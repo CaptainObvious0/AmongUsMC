@@ -17,13 +17,17 @@ public class GameVent {
             ventLocations.add(location);
         }
     }
-    public Location getNextVent(int vent) {
+    public Location getNextVent(Location location, boolean forward) {
 
-        if (vent == ventLocations.size()) {
-            return ventLocations.get(0);
+        int current = ventLocations.indexOf(location);
+
+        if (forward) {
+            if (ventLocations.size() == current) return ventLocations.get(0);
+            return ventLocations.get(current + 1);
+        } else {
+            if (current == 0) return ventLocations.get(ventLocations.size());
+            return ventLocations.get(current - 1);
         }
-
-        return ventLocations.get(vent + 1);
 
     }
 

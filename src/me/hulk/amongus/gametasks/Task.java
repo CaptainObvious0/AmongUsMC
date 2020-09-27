@@ -1,4 +1,4 @@
-package me.hulk.amongus.GameTasks;
+package me.hulk.amongus.gametasks;
 
 public class Task {
 

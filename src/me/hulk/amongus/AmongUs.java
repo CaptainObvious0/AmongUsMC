@@ -14,7 +14,7 @@ public class AmongUs extends JavaPlugin {
     public void onEnable() {
         Bukkit.getPluginManager().registerEvents(new GameListeners(), this);
         this.plugin = this;
-        this.game = new Game(new GameSettings(2, 10, 0.2F, 8, 12, 60, 80), null); // TODO: get game settings from config
+        this.game = new Game(new GameSettings(2, 10, 0.2F, 8, 12, 60, 80, 15, 20), null); // TODO: get game settings from config
     }
 
     public static AmongUs getInstance() {

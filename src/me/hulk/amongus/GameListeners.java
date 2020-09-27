@@ -4,6 +4,7 @@ import me.hulk.amongus.enums.GameStatus;
 import me.hulk.amongus.enums.PlayerRole;
 import me.hulk.amongus.events.GameEndEvent;
 import me.hulk.amongus.events.GameStartEvent;
+import me.hulk.amongus.gui.GUIItem;
 import me.hulk.amongus.objects.Game;
 import me.hulk.amongus.objects.GamePlayer;
 import org.bukkit.Bukkit;
@@ -17,6 +18,7 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.*;
+import org.bukkit.inventory.ItemStack;
 
 public class GameListeners implements Listener {
 
@@ -57,7 +59,15 @@ public class GameListeners implements Listener {
         GamePlayer damagedPlayer = AmongUs.getGame().getGamePlayer(damaged);
         if (AmongUs.getGame().getStatus() == GameStatus.PLAYING && gamePlayer != null && damagedPlayer != null && gamePlayer.getRole() == PlayerRole.IMPOSTER &&
                 player.getInventory().getItemInMainHand() != null && player.getInventory().getItemInMainHand().getType() == Material.IRON_SWORD) {
-            if (damagedPlayer.getRole() == PlayerRole.CREWMATE) damagedPlayer.killPlayer();
+            if (damagedPlayer.getRole() == PlayerRole.CREWMATE) {
+                if (gamePlayer.killCooldown > 0) {
+                    // tell player to wait
+                } else {
+                    damagedPlayer.killPlayer();
+                }
+            } else {
+                // cannot kill other players
+            }
         }
 
         event.setCancelled(true);
@@ -68,10 +78,18 @@ public class GameListeners implements Listener {
         if (event.isSneaking()) {
             GamePlayer player = AmongUs.getGame().getGamePlayer(event.getPlayer());
             if (player != null && player.getRole() == PlayerRole.IMPOSTER && event.getPlayer().getInventory().getItemInMainHand() != null &&
-                    event.getPlayer().getInventory().getItemInMainHand().getType() == Material.STRING && AmongUs.getGame().getMap().nearVent(event.getPlayer().getLocation())) {
+                    event.getPlayer().getInventory().getItemInMainHand().getType() == Material.STRING && AmongUs.getGame().getMap().nearVent(event.getPlayer().getLocation()) != null) {
                 player.imposterVent();
             }
         }
+    }
+
+    @EventHandler
+    public void onMove(PlayerMoveEvent event) {
+        GamePlayer player = AmongUs.getGame().getGamePlayer(event.getPlayer());
+
+        // Prevent imposters from jumping while in vent
+        if (player != null && player.isVented() && Math.abs(event.getTo().getY() - event.getFrom().getY()) > 0) event.setCancelled(true);
     }
 
     @EventHandler
@@ -134,8 +152,35 @@ public class GameListeners implements Listener {
 
         Game game = AmongUs.getGame();
 
-        if (event.getInventory() == game.getVotingGUI().getInventory()) {
+        if (!(event.getWhoClicked() instanceof  Player)) return;
 
+        if (event.getInventory() == game.getVotingGUI().getInventory() && game.getStatus() == GameStatus.VOTING) {
+            ItemStack item = game.getVotingGUI().getItem(event.getSlot());
+            if (item != null) {
+
+                if (item.getType() == Material.ARROW) {
+                    GamePlayer player = game.getGamePlayer((Player) event.getWhoClicked());
+
+                    if (player != null) {
+                        game.getGameVote().addVote(player, null);
+                    }
+
+                } else {
+                    String sPlayer = item.getItemMeta().getDisplayName();
+                    Player player = Bukkit.getPlayer(sPlayer.split(" ")[2]);
+
+                    if (player != null) {
+                        GamePlayer gamePlayer = game.getGamePlayer(player);
+                        GamePlayer votingPlayer = game.getGamePlayer((Player) event.getWhoClicked());
+                        if (gamePlayer != null && votingPlayer != null) {
+                            if (!game.getGameVote().addVote(votingPlayer, gamePlayer)) {
+                                // player cannot vote again
+                            }
+                        }
+                    }
+                }
+
+            }
         }
 
     }

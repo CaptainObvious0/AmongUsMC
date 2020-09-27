@@ -1,7 +1,6 @@
 package me.hulk.amongus.events;
 
 import me.hulk.amongus.objects.Game;
-import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 

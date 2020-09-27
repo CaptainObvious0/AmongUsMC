@@ -19,7 +19,7 @@ public class GameTask implements Runnable {
                 if (player.getPlayer().getLocation().distance(player1.getPlayer().getLocation()) > player.getPlayerVision()) {
                     player.getPlayer().hidePlayer(AmongUs.getInstance(), player1.getPlayer());
                 } else {
-                    player.getPlayer().showPlayer(AmongUs.getInstance(), player1.getPlayer());
+                    if (!player1.isVented()) player.getPlayer().showPlayer(AmongUs.getInstance(), player1.getPlayer());
                 }
             }
         }

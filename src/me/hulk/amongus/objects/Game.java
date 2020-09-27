@@ -2,6 +2,7 @@ package me.hulk.amongus.objects;
 
 import me.hulk.amongus.AmongUs;
 import me.hulk.amongus.gui.GameGUI;
+import me.hulk.amongus.tasks.CooldownCounter;
 import me.hulk.amongus.tasks.GameTimer;
 import me.hulk.amongus.enums.GameStatus;
 import me.hulk.amongus.enums.PlayerColors;
@@ -23,11 +24,14 @@ import java.util.*;
 public class Game {
 
     private HashMap<Player, GamePlayer> playersInGame;
+    private final ArrayList<Player> playersInLobby;
     private final List<PlayerColors> colors;
     private final HashMap<GamePlayer, Location> deadPlayers = new HashMap<>();
+
     private int hideTask;
+    private int meetingTask;
+
     private final GameSettings settings;
-    private final ArrayList<Player> playersInLobby;
     private GameStatus status;
     private final GameMap map;
     private int alivePlayers;
@@ -37,9 +41,10 @@ public class Game {
     // Voting
     int gameTimer;
     GameGUI votingGUI;
-
     public int discussionTimer;
     public int votingTimer;
+
+    int meetingCooldown;
 
     public Game(GameSettings settings, GameMap map) {
         this.settings = settings;
@@ -47,6 +52,7 @@ public class Game {
         this.status = GameStatus.WAITING;
         this.map = map;
         colors = Arrays.asList(PlayerColors.values());
+        meetingCooldown = settings.getMeetingCooldown();
     }
 
     public void gameStart() {
@@ -85,6 +91,8 @@ public class Game {
         this.playersInGame = gamePlayers;
         this.alivePlayers = gamePlayers.size();
 
+        this.meetingTask = Bukkit.getScheduler().scheduleSyncRepeatingTask(AmongUs.getInstance(), new CooldownCounter(this), 20, 20);
+
         // Teleport player to game world/arena
 
     }
@@ -94,6 +102,8 @@ public class Game {
         gameVote = null;
         // Teleport players
         status = GameStatus.PLAYING;
+        Bukkit.getScheduler().cancelTask(meetingTask);
+        this.meetingTask = Bukkit.getScheduler().scheduleSyncRepeatingTask(AmongUs.getInstance(), new CooldownCounter(this), 20, 20);
 
         for (Player player : playersInGame.keySet()) {
             player.getInventory().setItem(8, new ItemStack(Material.AIR));
@@ -147,6 +157,16 @@ public class Game {
 
     public GameVote getGameVote() { return this.gameVote; }
 
+    public void updateCooldown() {
+        if (meetingCooldown > 0) meetingCooldown--;
+    }
+
+    public void updateKillCooldown() {
+        for (GamePlayer player : playersInGame.values()) {
+            if (player.getRole() == PlayerRole.IMPOSTER && player.killCooldown > 0) player.killCooldown--;
+        }
+    }
+
     public List<GamePlayer> getAlivePlayers() {
         List<GamePlayer> toReturn = new ArrayList<>();
 
@@ -189,9 +209,13 @@ public class Game {
         status = GameStatus.DISCUSSION;
         votingGUI = GameGUI.createVotingGUI();
         // Teleport all players to discussion table
-        Bukkit.broadcastMessage(ChatColor.translateAlternateColorCodes('&', "&9AmongUs> " + reporter.getColor().name() + " &freported " + deadPlayer.getColor().name() + " &fas dead!"));
+        if (deadPlayer == null) {
+            Bukkit.broadcastMessage(GUIItem.color("&9AmongUs> " + reporter.getColor().getTitle() + reporter.getPlayer().getName() + " &7has called an emergency meeting!"));
+        } else {
+            Bukkit.broadcastMessage(GUIItem.color("&9AmongUs> " + reporter.getColor().name() + " &freported " + deadPlayer.getColor().name() + " &fas dead!"));
+        }
         gameTimer = Bukkit.getScheduler().scheduleSyncRepeatingTask(AmongUs.getInstance(), new GameTimer(this), 40L, 20L);
-        gameVote = new GameVote();
+        gameVote = new GameVote(playersInGame.size(), this);
 
         for (Player player : playersInGame.keySet()) {
             player.getInventory().setItem(8, GUIItem.createItem(Material.CHEST, "&bPlayer Voting"));
@@ -223,6 +247,12 @@ public class Game {
                 // No one was ejected
             }
             resetGame();
+        }
+    }
+
+    public void hideAllPlayers(Player player) {
+        for (Player gPlayer : playersInGame.keySet()) {
+            gPlayer.hidePlayer(AmongUs.getInstance(), player);
         }
     }
 
