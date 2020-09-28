@@ -1,6 +1,7 @@
 package me.hulk.amongus.objects;
 
 import me.hulk.amongus.AmongUs;
+import me.hulk.amongus.gametasks.Task;
 import me.hulk.amongus.gui.GameGUI;
 import me.hulk.amongus.tasks.CooldownCounter;
 import me.hulk.amongus.tasks.GameTimer;
@@ -24,9 +25,10 @@ import java.util.*;
 public class Game {
 
     private HashMap<Player, GamePlayer> playersInGame;
-    private final ArrayList<Player> playersInLobby;
+    private ArrayList<Player> playersInLobby;
     private final List<PlayerColors> colors;
-    private final HashMap<GamePlayer, Location> deadPlayers = new HashMap<>();
+    private HashMap<GamePlayer, Location> deadPlayers = new HashMap<>();
+    private ArrayList<Task> avalibileTasks;
 
     private int hideTask;
     private int meetingTask;
@@ -44,15 +46,22 @@ public class Game {
     public int discussionTimer;
     public int votingTimer;
 
+    GameGUI emergencyMeetingGUI;
     int meetingCooldown;
+
+    private final GameGUI settingsGUI;
 
     public Game(GameSettings settings, GameMap map) {
         this.settings = settings;
         this.playersInLobby = new ArrayList<>();
+        this.playersInGame = new HashMap<>();
         this.status = GameStatus.WAITING;
         this.map = map;
         colors = Arrays.asList(PlayerColors.values());
         meetingCooldown = settings.getMeetingCooldown();
+        emergencyMeetingGUI = GameGUI.createEmergencyMeetingGUI();
+        this.avalibileTasks = new ArrayList<>(); // TODO, grab a list of all tasks from config
+        this.settingsGUI = GameGUI.createGameSettingsGUI();
     }
 
     public void gameStart() {
@@ -62,6 +71,7 @@ public class Game {
         HashMap<Player, GamePlayer> gamePlayers = new HashMap<>();
         int imposters = settings.getImposters();
 
+        ArrayList<Player> lobbyPlayers = playersInLobby;
         // Randomly assign roles to players and create GamePlayer
         while (imposters > 0) {
             for (Player player : playersInLobby) {
@@ -69,28 +79,39 @@ public class Game {
                     if (gamePlayers.containsKey(player) && gamePlayers.get(player).getRole() == PlayerRole.CREWMATE) {
                         gamePlayers.get(player).setRole(PlayerRole.IMPOSTER);
                         imposters--;
-                    } else {
-                        if (!gamePlayers.containsKey(player)) {
-                            gamePlayers.put(player, new GamePlayer(player, this, PlayerRole.IMPOSTER));
-                            imposters--;
-                        }
+                        lobbyPlayers.remove(player);
+                    } else if (!gamePlayers.containsKey(player)) {
+                        gamePlayers.put(player, new GamePlayer(player, this, PlayerRole.IMPOSTER));
+                        lobbyPlayers.remove(player);
+                        imposters--;
                     }
                 } else {
-                    if (!gamePlayers.containsKey(player)) gamePlayers.put(player, new GamePlayer(player, this, PlayerRole.CREWMATE));
+                    if (!gamePlayers.containsKey(player)) {
+                        gamePlayers.put(player, new GamePlayer(player, this, PlayerRole.CREWMATE));
+                        lobbyPlayers.remove(player);
+                    }
                 }
             }
 
         }
 
-        for (GamePlayer gamePlayer : gamePlayers.values()) {
-            gamePlayer.startGame();
-            gamePlayer.getPlayer().setWalkSpeed(0);
-            gamePlayer.getPlayer().addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 100, 0));
+        if (lobbyPlayers.size() > 0) {
+            for (Player player : lobbyPlayers) {
+                gamePlayers.get(player).setRole(PlayerRole.CREWMATE);
+            }
         }
 
-        this.playersInGame = gamePlayers;
-        this.alivePlayers = gamePlayers.size();
+        playersInLobby.clear();
 
+        for (GamePlayer gamePlayer : gamePlayers.values()) {
+            gamePlayer.getPlayer().setWalkSpeed(0);
+            gamePlayer.getPlayer().addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 100, 0));
+            playersInGame.put(gamePlayer.getPlayer(), gamePlayer);
+            gamePlayer.getPlayer().teleport(map.getSpawnLocationForColor(gamePlayer.getColor()));
+            gamePlayer.startGame();
+        }
+
+        this.alivePlayers = gamePlayers.size();
         this.meetingTask = Bukkit.getScheduler().scheduleSyncRepeatingTask(AmongUs.getInstance(), new CooldownCounter(this), 20, 20);
 
         // Teleport player to game world/arena
@@ -151,15 +172,19 @@ public class Game {
         return playersInGame.getOrDefault(player, null);
     }
 
-    public GameGUI getVotingGUI() {
-        return votingGUI;
-    }
+    public GameGUI getVotingGUI() { return votingGUI; }
+
+    public GameGUI getEmergencyMeetingGUI() { return emergencyMeetingGUI; }
 
     public GameVote getGameVote() { return this.gameVote; }
 
     public void updateCooldown() {
         if (meetingCooldown > 0) meetingCooldown--;
     }
+
+    public boolean canHoldMeeting() { return meetingCooldown == 0; }
+
+    public GameGUI getSettingsGUI() { return this.settingsGUI; }
 
     public void updateKillCooldown() {
         for (GamePlayer player : playersInGame.values()) {
@@ -209,7 +234,7 @@ public class Game {
         status = GameStatus.DISCUSSION;
         votingGUI = GameGUI.createVotingGUI();
         // Teleport all players to discussion table
-        if (deadPlayer == null) {
+        if (deadPlayer == null) { // TODO: send a title as well
             Bukkit.broadcastMessage(GUIItem.color("&9AmongUs> " + reporter.getColor().getTitle() + reporter.getPlayer().getName() + " &7has called an emergency meeting!"));
         } else {
             Bukkit.broadcastMessage(GUIItem.color("&9AmongUs> " + reporter.getColor().name() + " &freported " + deadPlayer.getColor().name() + " &fas dead!"));
@@ -217,8 +242,9 @@ public class Game {
         gameTimer = Bukkit.getScheduler().scheduleSyncRepeatingTask(AmongUs.getInstance(), new GameTimer(this), 40L, 20L);
         gameVote = new GameVote(playersInGame.size(), this);
 
-        for (Player player : playersInGame.keySet()) {
-            player.getInventory().setItem(8, GUIItem.createItem(Material.CHEST, "&bPlayer Voting"));
+        for (GamePlayer player : playersInGame.values()) {
+            if (player.isPlaying()) player.getPlayer().getInventory().setItem(8, GUIItem.createItem(Material.CHEST, "&bPlayer Voting"));
+            player.getPlayer().teleport(map.getSpawnLocationForColor(player.getColor()));
         }
 
     }

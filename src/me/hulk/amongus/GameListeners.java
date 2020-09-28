@@ -4,7 +4,9 @@ import me.hulk.amongus.enums.GameStatus;
 import me.hulk.amongus.enums.PlayerRole;
 import me.hulk.amongus.events.GameEndEvent;
 import me.hulk.amongus.events.GameStartEvent;
+import me.hulk.amongus.gametasks.Task;
 import me.hulk.amongus.gui.GUIItem;
+import me.hulk.amongus.gui.GameGUI;
 import me.hulk.amongus.objects.Game;
 import me.hulk.amongus.objects.GamePlayer;
 import org.bukkit.Bukkit;
@@ -34,6 +36,11 @@ public class GameListeners implements Listener {
             game.addGamePlayer(new GamePlayer(player, game, PlayerRole.SPECTATOR));
         } else {
             game.addPlayerInLobby(player);
+
+            // Allow player to change game controls
+            if (player.isOp()) {
+                player.getInventory().setItem(4, new ItemStack(Material.ENDER_CHEST));
+            }
 
             if (game.getSettings().getSize() <= game.getPlayersInLobby().size()) {
                 // announce game is starting and start countdown
@@ -126,7 +133,33 @@ public class GameListeners implements Listener {
         Game game = AmongUs.getGame();
         GamePlayer player = game.getGamePlayer(event.getPlayer());
 
-        if (event.hasItem() && player != null && event.getItem().getType() == Material.BLAZE_ROD) {
+        if (player == null) return;
+
+        if (event.getClickedBlock() != null && event.getClickedBlock().getType() == Material.STONE_BUTTON) {
+
+            if (game.getMap().getEmergencyMeetingButton() == event.getClickedBlock().getLocation()) {
+                player.getPlayer().openInventory(GameGUI.createEmergencyMeetingGUI().getInventory());
+                return;
+            }
+
+            if (player.getRole() != PlayerRole.CREWMATE) return; // TODO - let spectators do tasks too, just need to figure out the difference between a DEAD imposter and crewmate
+
+            Task playerTask = null;
+            for (Task task  : player.getPlayerTasks()) {
+                if (task.getLocation() == event.getClickedBlock().getLocation()) playerTask = task;
+            }
+
+            if (playerTask != null) {
+                if (playerTask.hasGUI()) {
+                    player.getPlayer().openInventory(playerTask.getTaskGUI().getInventory());
+                } else {
+                    playerTask.runTaskActions(player);
+                }
+            }
+
+        }
+
+        if (event.hasItem() && player.isPlaying() && event.getItem().getType() == Material.BLAZE_ROD) {
 
             GamePlayer deadPlayer = game.checkForNearDead(event.getPlayer().getLocation());
 
@@ -144,6 +177,10 @@ public class GameListeners implements Listener {
             // open voting gui
         }
 
+        if (event.hasItem() && event.getItem().getType() == Material.ENDER_CHEST && player.getPlayer().isOp() && game.getStatus() == GameStatus.WAITING) {
+            player.getPlayer().openInventory(GameGUI.createGameSettingsGUI().getInventory());
+        }
+
 
     }
 
@@ -154,6 +191,7 @@ public class GameListeners implements Listener {
 
         if (!(event.getWhoClicked() instanceof  Player)) return;
 
+        // Voting
         if (event.getInventory() == game.getVotingGUI().getInventory() && game.getStatus() == GameStatus.VOTING) {
             ItemStack item = game.getVotingGUI().getItem(event.getSlot());
             if (item != null) {
@@ -181,6 +219,21 @@ public class GameListeners implements Listener {
                 }
 
             }
+        }
+
+        // Emergency Meeting
+        if (event.getInventory() == game.getEmergencyMeetingGUI().getInventory() && game.getStatus() == GameStatus.PLAYING && game.canHoldMeeting()) {
+            GamePlayer player = game.getGamePlayer((Player) event.getWhoClicked());
+            if (event.getSlot() == 4 && player != null && player.isPlaying()) {
+                game.onDeadBodyReport(player, null);
+            }
+        }
+
+        if (event.getInventory() == game.getSettingsGUI()) {
+            boolean rightClick = event.isRightClick();
+
+
+
         }
 
     }

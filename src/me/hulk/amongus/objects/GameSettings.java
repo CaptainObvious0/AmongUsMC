@@ -11,9 +11,13 @@ public class GameSettings {
     private int votingTime;
     private int meetingCooldown;
     private int killCooldown;
+    private int shortTasks;
+    private int commonTasks;
+    private int longTasks;
 
     public GameSettings(int imposters, int size, float walkSpeed, double crewVision, double imposterVision,
-                        int discussionTime, int votingTime, int meetingCooldown, int killCooldown) {
+                        int discussionTime, int votingTime, int meetingCooldown, int killCooldown,
+                        int shortTasks, int longTasks, int commonTasks) {
         this.imposters = imposters;
         this.players = size;
         this.walkSpeed = walkSpeed;
@@ -23,6 +27,9 @@ public class GameSettings {
         this.killCooldown = killCooldown;
         this.discussionTime = discussionTime;
         this.votingTime = votingTime;
+        this.shortTasks = shortTasks;
+        this.commonTasks = commonTasks;
+        this.longTasks = longTasks;
     }
 
     public void setImposters(int imposters) {

@@ -38,15 +38,18 @@ public class GamePlayer {
         String role = getRole().getTitle();
         generateTasks();
         player.sendTitle(ChatColor.translateAlternateColorCodes('&', role), ChatColor.translateAlternateColorCodes('&', "There are &c" + game.getSettings().getImposters() + " &famong us"), 30, 50, 15);
+
+        player.getInventory().setItem(0, GUIItem.createItem(Material.BLAZE_ROD, "&eReport Tool"));
+        player.getInventory().setItem(4, new ItemStack(Material.AIR));
+        if (this.role == PlayerRole.IMPOSTER) {
+            player.getInventory().setItem(2, GUIItem.createItem(Material.IRON_SWORD, "&cKill"));
+            player.getInventory().setItem(4, GUIItem.createItem(Material.STRING, "&bVent Tool"));
+        }
+
         Bukkit.getScheduler().runTaskLater(AmongUs.getInstance(), () -> {
             player.setWalkSpeed(game.getSettings().getWalkSpeed());
         }, 100);
 
-        player.getInventory().setItem(0, GUIItem.createItem(Material.BLAZE_ROD, "&eReport Tool"));
-        if (this.role == PlayerRole.CREWMATE) {
-            player.getInventory().setItem(2, GUIItem.createItem(Material.IRON_SWORD, "&cKill"));
-            player.getInventory().setItem(4, GUIItem.createItem(Material.STRING, "&bVent Tool"));
-        }
 
     }
 
@@ -108,8 +111,16 @@ public class GamePlayer {
         return game.getSettings().getImposterVision();
     }
 
+    public boolean isPlaying() {
+        return role == PlayerRole.CREWMATE || role == PlayerRole.IMPOSTER;
+    }
+
     public PlayerColors getColor() {
         return color;
+    }
+
+    public Task[] getPlayerTasks() {
+        return tasks;
     }
 
     public static String color(String msg) {

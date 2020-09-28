@@ -11,6 +11,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 
+import java.util.Arrays;
 import java.util.HashMap;
 
 public class GameGUI {
@@ -24,7 +25,7 @@ public class GameGUI {
 
         inventory = Bukkit.createInventory(null, size, name);
         for (ItemStack item : items) {
-            inventory.addItem(item);
+            inventory.setItem(slots[slot], item);
             invItems.put(slots[slot], item);
             slot++;
         }
@@ -73,5 +74,64 @@ public class GameGUI {
 
         return new GameGUI(54, "Voting", items, slots);
     }
+
+    public static GameGUI createEmergencyMeetingGUI() {
+        ItemStack button = new ItemStack(Material.RED_STAINED_GLASS);
+        ItemMeta meta = button.getItemMeta();
+        meta.setDisplayName(GUIItem.color("&cCall an emergency meeting"));
+        button.setItemMeta(meta);
+
+        ItemStack[] invItems = new ItemStack[0];
+        int[] slots = new int[0];
+        invItems[0] = button;
+        slots[0] = 4;
+
+        return new GameGUI(9, GUIItem.color("&4Emergency Meeting"), invItems, slots);
+
+    }
+
+    public static GameGUI createGameSettingsGUI() {
+
+        ItemStack imposters = new ItemStack(Material.REDSTONE);
+        ItemStack players = new ItemStack(Material.PLAYER_HEAD);
+        ItemStack walkSpeed = new ItemStack(Material.DIAMOND_BOOTS);
+        ItemStack crewVision = new ItemStack(Material.BLUE_STAINED_GLASS_PANE);
+        ItemStack imposterVision = new ItemStack(Material.RED_STAINED_GLASS_PANE);
+        ItemStack meetingCooldown = new ItemStack(Material.REDSTONE_TORCH);
+        ItemStack discussionTime = new ItemStack(Material.PAPER);
+        ItemStack votingTime = new ItemStack(Material.LEGACY_BOOK_AND_QUILL);
+        ItemStack killCooldown = new ItemStack(Material.IRON_SWORD);
+        ItemStack shortTasks = new ItemStack(Material.COAL_ORE);
+        ItemStack commonTasks = new ItemStack(Material.IRON_ORE);
+        ItemStack longTasks = new ItemStack(Material.DIAMOND_ORE);
+
+        imposters = addName(imposters, "&cImposters");
+        players = addName(players, "&2Players");
+        walkSpeed = addName(walkSpeed, "&aWalk Speed");
+        crewVision = addName(crewVision, "&7Crew Vision");
+        imposterVision = addName(imposterVision, "&8Imposter Vision");
+        meetingCooldown = addName(meetingCooldown, "&dMeeting Cooldown");
+        discussionTime = addName(discussionTime, "&eDiscussion Time");
+        votingTime = addName(votingTime, "&6Voting Time");
+        killCooldown = addName(killCooldown, "&4Kill Cooldown");
+        shortTasks = addName(shortTasks,"&1Short Tasks");
+        commonTasks = addName(commonTasks, "&3Common Tasks");
+        longTasks = addName(longTasks, "&dLong Tasks");
+
+        ItemStack[] itemList = (ItemStack[]) Arrays.asList(imposters, players, walkSpeed, crewVision, imposterVision, meetingCooldown, discussionTime, votingTime, killCooldown, shortTasks, commonTasks, longTasks).toArray();
+        int[] slots = Arrays.asList(11, 20, 29, 38, 13, 22, 31, 40, 15, 24, 33).stream().mapToInt(Integer::intValue).toArray();
+
+        return new GameGUI(54, "Game Settings", itemList, slots);
+
+    }
+
+    private static ItemStack addName(ItemStack item, String name) {
+        ItemMeta meta = item.getItemMeta();
+        meta.setDisplayName(GUIItem.color(name));
+        meta.setLore(Arrays.asList(GUIItem.color("&bUse &c&lRIGHT CLICK &bto increase"), GUIItem.color("&bUse &c&lLEFT CLICK &bto decrease")));
+        item.setItemMeta(meta);
+        return item;
+    }
+
 
 }
